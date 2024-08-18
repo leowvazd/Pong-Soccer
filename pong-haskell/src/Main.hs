@@ -6,7 +6,9 @@ import System.Exit (exitSuccess)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- Estado do jogo
-data GameState = Menu | Play | Exit | TwoBalls | ThreeBalls | Paused | Win | Lose deriving (Eq)
+data GameState = Menu | Play | Exit | Paused | Win | Lose deriving (Eq)
+
+-- Removido: TwoBalls e ThreeBalls não estavam sendo utilizados
 
 ballSpeedIncreaseRate :: Float
 ballSpeedIncreaseRate = 0.01 -- Aumenta as unidades por segundo
