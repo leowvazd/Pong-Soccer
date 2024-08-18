@@ -255,12 +255,21 @@ handleEvent (EventKey (MouseButton LeftButton) Down _ (x, y)) game
     then unsafePerformIO exitSuccess  -- Fecha o jogo
     else game
 handleEvent (EventKey (MouseButton LeftButton) Down _ (x, y)) game
-  | gameState game `elem` [Play, Paused, Win, Lose] =
+  | gameState game == Play || gameState game == Paused =
     if y > 250 && y < 290 then
       if x > -340 && x < -260
         then initialState { gameState = Menu }  -- Menu
       else if x > -40 && x < 40
         then game { gameState = if gameState game == Play then Paused else Play }  -- Pause/Resume
+      else if x > 260 && x < 340
+        then initialState { gameState = Play }  -- Restart
+      else game
+    else game
+handleEvent (EventKey (MouseButton LeftButton) Down _ (x, y)) game
+  | gameState game == Win || gameState game == Lose =
+    if y > 250 && y < 290 then
+      if x > -340 && x < -260
+        then initialState { gameState = Menu }  -- Menu
       else if x > 260 && x < 340
         then initialState { gameState = Play }  -- Restart
       else game
