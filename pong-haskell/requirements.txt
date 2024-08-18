@@ -1,0 +1,8 @@
+to install:
+sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+sudo apt-get install freeglut3-dev
+
+commands:
+stack setup --reinstall
+stack build
+stack run
