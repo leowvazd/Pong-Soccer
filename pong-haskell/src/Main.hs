@@ -183,7 +183,7 @@ renderPaddle (PaddleState (x, y) _) = translate x y $ color white $ rectangleSol
 
 renderScore :: Int -> Int -> Picture
 renderScore playerScore cpuScore = pictures
-  [ translate (315) (-200) $ scale 0.5 0.5 $ color white $ text (show playerScore) -- Placar do jogador
+  [ translate (315) (-220) $ scale 0.5 0.5 $ color white $ text (show playerScore) -- Placar do jogador
   , translate (315) (170)$ scale 0.5 0.5 $ color white $ text (show cpuScore) -- Placar da CPU
   ]
 
