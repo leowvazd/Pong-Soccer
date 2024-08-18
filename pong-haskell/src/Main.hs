@@ -1,23 +1,40 @@
 module Main where
 
 import qualified SDL.Mixer as Mix
-
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.Exit (exitSuccess)
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad (when)
+import Control.Concurrent (forkIO, threadDelay)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+
+data Sound = Sound
+  { introMusic :: Mix.Music
+  }
 
 data Sounds = Sounds
   { menuMusic :: Mix.Music
+  , gameMusic :: Mix.Music
+  , winMusic :: Mix.Music
+  , loseMusic :: Mix.Music
   }
 
 -- Utilizar Paths Absolutos
 globalSounds :: Sounds
 globalSounds = unsafePerformIO $ do
   Mix.openAudio Mix.defaultAudio 256
-  menuMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/mixkit-synth-suspense-music-681.wav"
-  return $ Sounds menuMusic
+  menuMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/menu.wav"
+  gameMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/game.wav"
+  winMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/win.wav"
+  loseMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/lose.wav"
+  return $ Sounds menuMusic gameMusic winMusic loseMusic
+
+globalSound :: Sound
+globalSound = unsafePerformIO $ do
+  Mix.openAudio Mix.defaultAudio 256
+  introMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/intro.wav"
+  return $ Sound introMusic
 
 -- Estado do jogo
 data GameState = Menu | Play | Exit | Paused | Win | Lose deriving (Eq)
@@ -74,11 +91,30 @@ initialState = Game
   , sounds = globalSounds
   }
 
--- Função principal
+manageMusic :: IORef Game -> IO ()
+manageMusic gameRef = do
+  prevState <- newIORef Menu
+  let loop = do
+        game <- readIORef gameRef
+        currentState <- readIORef prevState
+        when (gameState game /= currentState) $ do
+          case gameState game of
+            Menu -> Mix.playMusic 0 (menuMusic $ sounds game)
+            Play -> Mix.playMusic 0 (gameMusic $ sounds game)
+            Win -> Mix.playMusic 0 (winMusic $ sounds game)
+            Lose -> Mix.playMusic 0 (loseMusic $ sounds game)
+            _ -> return ()
+          writeIORef prevState (gameState game)
+        threadDelay 100000  -- Verifica a cada 0.1 segundos
+        loop
+  loop  
+
 main :: IO ()
 main = do
-  Mix.playMusic Mix.Forever (menuMusic globalSounds)
-  play window background 60 initialState render handleEvent update
+  gameRef <- newIORef initialState
+  forkIO $ manageMusic gameRef
+  Mix.playMusic Mix.Forever (introMusic globalSound)
+  play window background 60 initialState render handleEvent (updateWrapped gameRef)
 
 -- Função para desenhar o título com cores diferentes
 drawTitle :: Picture
@@ -292,6 +328,13 @@ handleEvent (EventKey (MouseButton LeftButton) Down _ (x, y)) game
     else game
 handleEvent _ game = game
 
+updateWrapped :: IORef Game -> Float -> Game -> Game
+updateWrapped gameRef seconds game = 
+  let newGame = update seconds game
+  in unsafePerformIO $ do
+       writeIORef gameRef newGame
+       return newGame
+
 -- Atualiza o estado do jogo
 update :: Float -> Game -> Game
 update seconds game@(Game Paused _ _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver pausado
@@ -365,10 +408,10 @@ update seconds (Game Play ballState playerPaddle cpuPaddle gameTime initialCpuSp
           finalBallState = checkPaddleCollision ballStateWithPlayerCollision updatedCpuPaddle'
         in (finalBallState, updatedPlayerPaddle', updatedCpuPaddle', gameTime + seconds)
 
-    -- Verifica se algum jogador atingiu 3 gols
-    newGameState = if updatedPlayerScore >= 3
+    -- Verifica se algum jogador atingiu x gols
+    newGameState = if updatedPlayerScore >= 10
                    then Win
-                   else if updatedCpuScore >= 3
+                   else if updatedCpuScore >= 10
                         then Lose
                         else Play
 
