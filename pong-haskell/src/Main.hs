@@ -1,9 +1,23 @@
 module Main where
 
+import qualified SDL.Mixer as Mix
+
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.Exit (exitSuccess)
 import System.IO.Unsafe (unsafePerformIO)
+import Control.Monad (when)
+
+data Sounds = Sounds
+  { menuMusic :: Mix.Music
+  }
+
+-- Utilizar Paths Absolutos
+globalSounds :: Sounds
+globalSounds = unsafePerformIO $ do
+  Mix.openAudio Mix.defaultAudio 256
+  menuMusic <- Mix.load "/home/vaz/Documents/Github/Pong-Soccer/pong-haskell/assets/mixkit-synth-suspense-music-681.wav"
+  return $ Sounds menuMusic
 
 -- Estado do jogo
 data GameState = Menu | Play | Exit | Paused | Win | Lose deriving (Eq)
@@ -34,7 +48,8 @@ data Game = Game
   , initialBallSpeed :: Float
   , playerScore :: Int
   , cpuScore :: Int
-  } deriving (Eq)
+  , sounds :: Sounds
+  }
 
 -- Configurações da janela
 window :: Display
@@ -56,11 +71,14 @@ initialState = Game
   , initialBallSpeed = 400
   , playerScore = 0
   , cpuScore = 0
+  , sounds = globalSounds
   }
 
 -- Função principal
 main :: IO ()
-main = play window background 60 initialState render handleEvent update
+main = do
+  Mix.playMusic Mix.Forever (menuMusic globalSounds)
+  play window background 60 initialState render handleEvent update
 
 -- Função para desenhar o título com cores diferentes
 drawTitle :: Picture
@@ -276,10 +294,10 @@ handleEvent _ game = game
 
 -- Atualiza o estado do jogo
 update :: Float -> Game -> Game
-update seconds game@(Game Paused _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver pausado
-update seconds game@(Game Win _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver na tela de vitória
-update seconds game@(Game Lose _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver na tela de derrota
-update seconds (Game Play ballState playerPaddle cpuPaddle gameTime initialCpuSpeed initialBallSpeed playerScore cpuScore) =
+update seconds game@(Game Paused _ _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver pausado
+update seconds game@(Game Win _ _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver na tela de vitória
+update seconds game@(Game Lose _ _ _ _ _ _ _ _ _) = game  -- Não atualiza se estiver na tela de derrota
+update seconds (Game Play ballState playerPaddle cpuPaddle gameTime initialCpuSpeed initialBallSpeed playerScore cpuScore sounds) =
   let
     -- Limites do campo
     leftLimit = -300
@@ -354,5 +372,5 @@ update seconds (Game Play ballState playerPaddle cpuPaddle gameTime initialCpuSp
                         then Lose
                         else Play
 
-  in Game newGameState updatedBallState updatedPlayerPaddle updatedCpuPaddle updatedGameTime initialCpuSpeed initialBallSpeed updatedPlayerScore updatedCpuScore
+  in Game newGameState updatedBallState updatedPlayerPaddle updatedCpuPaddle updatedGameTime initialCpuSpeed initialBallSpeed updatedPlayerScore updatedCpuScore sounds
 update _ game = game  -- Para outros estados (como Menu)
